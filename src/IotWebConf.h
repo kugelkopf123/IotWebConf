@@ -32,7 +32,7 @@
 // -- Maximal length of any string used in IotWebConfig configuration (e.g.
 // ssid).
 #ifndef IOTWEBCONF_WORD_LEN
-# define IOTWEBCONF_WORD_LEN 33
+# define IOTWEBCONF_WORD_LEN 40 //33
 #endif
 // -- Maximal length of password used in IotWebConfig configuration.
 #ifndef IOTWEBCONF_PASSWORD_LEN
@@ -49,7 +49,7 @@
 
 // -- mDNS should allow you to connect to this device with a hostname provided
 // by the device. E.g. mything.local
-#define IOTWEBCONF_CONFIG_USE_MDNS
+//#define IOTWEBCONF_CONFIG_USE_MDNS
 
 // -- Logs progress information to Serial if enabled.
 #ifndef IOTWEBCONF_DEBUG_DISABLED
@@ -95,7 +95,7 @@ const char IOTWEBCONF_HTML_CONFIG_VER[] PROGMEM   = "<div style='font-size: .6em
 #define IOTWEBCONF_STATE_AP_MODE 2
 #define IOTWEBCONF_STATE_CONNECTING 3
 #define IOTWEBCONF_STATE_ONLINE 4
-
+#define IOTWEBCONF_STATE_OFFLINE 5
 // -- AP connection state
 // -- No connection on AP.
 #define IOTWEBCONF_AP_CONNECTION_STATE_NC 0
@@ -245,6 +245,7 @@ public:
    *   @configPin - An Arduino pin. Will be configured as INPUT_PULLUP!
    */
   void setConfigPin(int configPin);
+  void setAutoConnect(bool autoConnect=true);
 
   /**
    * Provide an Arduino pin for status indicator (LOW = on). Blink codes:
@@ -505,6 +506,7 @@ private:
   WebServer* _server;
   HTTPUpdateServer* _updateServer = NULL;
   int _configPin = -1;
+  bool _autoConnect=true;
   int _statusPin = -1;
   const char* _updatePath = NULL;
   boolean _forceDefaultPassword = false;

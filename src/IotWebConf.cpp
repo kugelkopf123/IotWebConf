@@ -101,6 +101,11 @@ void IotWebConf::setConfigPin(int configPin)
   this->_configPin = configPin;
 }
 
+void IotWebConf::setAutoConnect(bool autoConnect)
+{
+	this->_autoConnect = autoConnect;
+}
+
 void IotWebConf::setStatusPin(int statusPin)
 {
   this->_statusPin = statusPin;
@@ -787,8 +792,18 @@ void IotWebConf::doLoop()
     this->_dnsServer->processNextRequest();
     this->_server->handleClient();
   }
+ /* else if (this->_state == IOTWEBCONF_STATE_OFFLINE){
+  	
+	  this->changeState(IOTWEBCONF_STATE_OFFLINE);
+	  return;
+	
+  }*/
   else if (this->_state == IOTWEBCONF_STATE_CONNECTING)
   {
+	  if(this->_autoConnect==false){
+	  	  this->changeState(IOTWEBCONF_STATE_OFFLINE);
+		  return;
+	    }
     if (checkWifiConnection())
     {
       this->changeState(IOTWEBCONF_STATE_ONLINE);
@@ -883,17 +898,24 @@ void IotWebConf::stateChanged(byte oldState, byte newState)
       this->_apConnectionStatus = IOTWEBCONF_AP_CONNECTION_STATE_NC;
       this->_apStartTimeMs = millis();
       break;
+	case IOTWEBCONF_STATE_OFFLINE:
+	Serial.println("Stay Offline");
+		break;
     case IOTWEBCONF_STATE_CONNECTING:
       if ((oldState == IOTWEBCONF_STATE_AP_MODE) ||
           (oldState == IOTWEBCONF_STATE_NOT_CONFIGURED))
       {
         stopAp();
       }
-      if ((oldState == IOTWEBCONF_STATE_BOOT) && (this->_updateServer != NULL))
+      Serial.print(this->_autoConnect);
+      Serial.println("<autoconnect");
+      if ((oldState == IOTWEBCONF_STATE_BOOT) && (this->_updateServer != NULL) )
       {
         // We've skipped AP mode, so update server needs to be set up now.
         this->_updateServer->setup(this->_server, this->_updatePath);
       }
+	  
+	  if (this->_autoConnect ==true){
       this->blinkInternal(1000, 50);
 #ifdef IOTWEBCONF_DEBUG_TO_SERIAL
       Serial.print("Connecting to [");
@@ -906,9 +928,15 @@ void IotWebConf::stateChanged(byte oldState, byte newState)
       Serial.println(F("] (password is hidden)"));
 # endif
 #endif
+	  
       this->_wifiConnectionStart = millis();
       this->_wifiConnectionHandler(
           this->_wifiAuthInfo.ssid, this->_wifiAuthInfo.password);
+ 	 }
+	 else{
+		 Serial.println("AutoConnect switched off.");
+		
+	 }
       break;
     case IOTWEBCONF_STATE_ONLINE:
       this->blinkInternal(8000, 2);
@@ -972,6 +1000,11 @@ void IotWebConf::checkConnection()
 
 boolean IotWebConf::checkWifiConnection()
 {
+ /* if(this->_autoConnect==false){
+	  this->changeState(IOTWEBCONF_STATE_OFFLINE);
+	  
+  }
+	*/
   if (WiFi.status() != WL_CONNECTED)
   {
     if (this->_wifiConnectionTimeoutMs < millis() - this->_wifiConnectionStart)
@@ -979,15 +1012,25 @@ boolean IotWebConf::checkWifiConnection()
       // -- WiFi not available, fall back to AP mode.
       IOTWEBCONF_DEBUG_LINE(F("Giving up."));
       WiFi.disconnect(true);
+	  
       IotWebConfWifiAuthInfo* newWifiAuthInfo = _wifiConnectionFailureHandler();
-      if (newWifiAuthInfo != NULL)
+	  
+		
+      if ((newWifiAuthInfo != NULL)&&(this->_autoConnect==true))
       {
         // -- Try connecting with another connection info.
         this->_wifiAuthInfo.ssid = newWifiAuthInfo->ssid;
         this->_wifiAuthInfo.password = newWifiAuthInfo->password;
         this->changeState(IOTWEBCONF_STATE_CONNECTING);
-      }
-      else
+      }/*
+      else if((newWifiAuthInfo != NULL) && (this->_autoConnect==false)){
+          this->_wifiAuthInfo.ssid = newWifiAuthInfo->ssid;
+          this->_wifiAuthInfo.password = newWifiAuthInfo->password;
+		  Serial.println("checkWifi -> state offline");
+      	this->changeState(IOTWEBCONF_STATE_OFFLINE);
+		
+      }*/
+	  else
       {
         this->changeState(IOTWEBCONF_STATE_AP_MODE);
       }
